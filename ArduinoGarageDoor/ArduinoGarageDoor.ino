@@ -47,6 +47,8 @@ void setup() {
   pinMode(relayPin, OUTPUT);
   // initialize the pushbutton pin as an input:
   pinMode(buttonPin, INPUT);
+
+  Serial.begin(9600);
 }
 
 void loop() {
@@ -64,8 +66,11 @@ void loop() {
     // If we're pressed, than increment counter
     if (buttonState == HIGH) {
       pressCount = pressCount + 1;
+      Serial.print(pressCount);
+      Serial.println(" is the press count");
       if (pressCount == 1) {
         // First time it's pressed, we connect the relay to open the garage door
+        Serial.println("Triggering Relay based on 1st press");
         triggerRelay();
       } 
     }
@@ -80,6 +85,11 @@ void loop() {
     if (pressCount > 3) {
        for (int i=0; i <= pressCount-1; i++){
           // turn internal LED On
+          Serial.print("Waiting ");
+          Serial.print(i);
+          Serial.print(" of ");
+          Serial.print(pressCount);
+          Serial.println(" seconds.");
           digitalWrite(internalLedPin, HIGH);
           delay(500);          
           digitalWrite(internalLedPin, LOW);
@@ -87,6 +97,7 @@ void loop() {
        }
 
         // Connect relay to close door.  
+        Serial.println("Triggering Relay based on presses");
         triggerRelay();
     }
     // reset pressCount
@@ -100,6 +111,8 @@ void triggerRelay(){
   // where circuit is intact between NO and COM.
   digitalWrite(relayPin,HIGH);
   digitalWrite(internalLedPin, HIGH);
+  
+  Serial.println("Triggering Relay");
   
   // Waitabit
   delay(500);
