@@ -33,22 +33,19 @@ option enabled in File -> Preferences.
 const int buttonPin = 2;     // the number of the pushbutton pin
 const int relayPin =  7;      // the number of the LED pin
 const int internalLedPin =  13;      // the number of the LED pin
+const unsigned long debounceDelay = 500;    // the debounce time; increase if the output flickers
 
 // variables will change:
 int buttonState = 0;         // variable for reading the pushbutton status
-int pressCount = 0;
 
-unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
-unsigned long debounceDelay = 2000;    // the debounce time; increase if the output flickers
+unsigned long lastDepressTime = 0;
+
 
 void setup() {
   // initialize the LED pin as an output:
-  pinMode(internalLedPin, OUTPUT);
-  pinMode(relayPin, OUTPUT);
-  // initialize the pushbutton pin as an input:
-  pinMode(buttonPin, INPUT);
-
-  Serial.begin(9600);
+  pinMode(internalLedPin, OUTPUT); // initialize the internalLED pin as an output:
+  pinMode(relayPin, OUTPUT); // initialize the relay control pin as an output
+  pinMode(buttonPin, INPUT); // initialize the pushbutton pin as an input
 }
 
 void loop() {
@@ -59,50 +56,24 @@ void loop() {
   if (reading != buttonState) {
     // The buttonState has changed, long live the buttonState!
     buttonState = reading;
-    
-    // reset the debouncing timer
-    lastDebounceTime = millis();
-    
-    // If we're pressed, than increment counter
+
+    // If we're pressed, then trigger relay and start counting
     if (buttonState == HIGH) {
-      pressCount = pressCount + 1;
-      Serial.print(pressCount);
-      Serial.println(" is the press count");
-      if (pressCount == 1) {
-        // First time it's pressed, we connect the relay to open the garage door
-        Serial.println("Triggering Relay based on 1st press");
-        triggerRelay();
-      } 
+      lastDepressTime = millis();
+    } else {
+      int duration = millis() - lastDepressTime;
+      
+      // If button was held down...
+      if (lastDepressTime != 0 && duration > debounceDelay) { 
+        // Turn on internal LED and wait 3x as long as the button was pressed
+        digitalWrite(internalLedPin, HIGH);
+        delay(duration * 3);
+        digitalWrite(internalLedPin, LOW);
+      }
+      triggerRelay();
+      lastDepressTime = 0;
     }
   }
-
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    // it's been more than `debounceDelay`, so we'll check presses
-
-    // if the button has been pressed 3 times,
-    // we want to wait a bit, and then close the door.
-    // Wait 1 second for each press over 3.
-    if (pressCount > 3) {
-       for (int i=0; i <= pressCount-1; i++){
-          // turn internal LED On
-          Serial.print("Waiting ");
-          Serial.print(i);
-          Serial.print(" of ");
-          Serial.print(pressCount);
-          Serial.println(" seconds.");
-          digitalWrite(internalLedPin, HIGH);
-          delay(500);          
-          digitalWrite(internalLedPin, LOW);
-          delay(500);                    
-       }
-
-        // Connect relay to close door.  
-        Serial.println("Triggering Relay based on presses");
-        triggerRelay();
-    }
-    // reset pressCount
-    pressCount = 0;    
-  }  
 }
 
 void triggerRelay(){
@@ -111,8 +82,6 @@ void triggerRelay(){
   // where circuit is intact between NO and COM.
   digitalWrite(relayPin,HIGH);
   digitalWrite(internalLedPin, HIGH);
-  
-  Serial.println("Triggering Relay");
   
   // Waitabit
   delay(500);
