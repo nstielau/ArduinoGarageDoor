@@ -30,7 +30,7 @@ option enabled in File -> Preferences.
 
 // constants won't change. They're used here to
 // set pin numbers:
-const int buttonPin = 2;     // the number of the pushbutton pin
+const int buttonPin = 6;     // the number of the pushbutton pin
 const int relayPin =  7;      // the number of the LED pin
 const int internalLedPin =  13;      // the number of the LED pin
 const unsigned long debounceDelay = 500;    // the debounce time; increase if the output flickers
@@ -43,15 +43,17 @@ unsigned long lastDepressTime = 0;
 
 void setup() {
   // initialize the LED pin as an output:
-  pinMode(internalLedPin, OUTPUT); // initialize the internalLED pin as an output:
+  pinMode(internalLedPin,OUTPUT); // initialize the internalLED pin as an output:
   pinMode(relayPin, OUTPUT); // initialize the relay control pin as an output
   pinMode(buttonPin, INPUT); // initialize the pushbutton pin as an input
+
+  Serial.begin(9600);
 }
 
 void loop() {
   // read the state of the pushbutton value:
   int reading = digitalRead(buttonPin);
-
+  
   // If the switch changed, due to noise or pressing:
   if (reading != buttonState) {
     // The buttonState has changed, long live the buttonState!
@@ -59,6 +61,7 @@ void loop() {
 
     // If we're pressed, then trigger relay and start counting
     if (buttonState == HIGH) {
+      Serial.println("Pressed");
       lastDepressTime = millis();
     } else {
       int duration = millis() - lastDepressTime;
@@ -70,6 +73,7 @@ void loop() {
         delay(duration * 3);
         digitalWrite(internalLedPin, LOW);
       }
+      Serial.println("Triggering Relay.");
       triggerRelay();
       lastDepressTime = 0;
     }
