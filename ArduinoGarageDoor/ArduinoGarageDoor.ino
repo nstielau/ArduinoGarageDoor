@@ -1,57 +1,40 @@
 /*
-  Button
+ArdunioGarageDoor 
 
-This report would have more information with
-"Show verbose output during compilation"
-option enabled in File -> Preferences.
+Adds a delayed-trigger for garage door.
 
- Turns on and off a light emitting diode(LED) connected to digital
- pin 13, when pressing a pushbutton attached to pin 2.
+Press and hold the button to delay door
+action by three times the duration held.
 
+MIT License
 
- The circuit:
- * LED attached from pin 13 to ground
- * pushbutton attached to pin 2 from +5V
- * 10K resistor attached to pin 2 from ground
+Nick Stielau
+*/
 
- * Note: on most Arduinos there is already an LED on the board
- attached to pin 13.
+// Constants (pin numbers, etc)
+const int buttonPin = 6;        // pin for button reading
+const int relayPin =  7;        // pin for relay control
+const int internalLedPin =  13; // pin for timing LED
+const int debugLedPin =  12;    // pin for 'debug' LED.  If the relay is triggerd this will stay HIGH.
 
-
- created 2005
- by DojoDave <http://www.0j0.org>
- modified 30 Aug 2011
- by Tom Igoe
-
- This example code is in the public domain.
-
- http://www.arduino.cc/en/Tutorial/Button
- */
-
-// constants won't change. They're used here to
-// set pin numbers:
-const int buttonPin = 6;     // the number of the pushbutton pin
-const int relayPin =  7;      // the number of the LED pin
-const int internalLedPin =  13;      // the number of the LED pin
-const unsigned long debounceDelay = 500;    // the debounce time; increase if the output flickers
+const int debounceThreshold = 50;             // Minimum detectable press duration 
+const int relayOnDuration = 500;              // duration to connect relay
+const unsigned long pressHoldThreshold = 500; // minimum time to be considered a press-and-hold
 
 // variables will change:
 int buttonState = 0;         // variable for reading the pushbutton status
 
 unsigned long lastDepressTime = 0;
 
-
 void setup() {
-  // initialize the LED pin as an output:
-  pinMode(internalLedPin,OUTPUT); // initialize the internalLED pin as an output:
+  pinMode(internalLedPin, OUTPUT); // initialize the internalLED pin as an output:
+  pinMode(debugLedPin, OUTPUT); // initialize the debugLedPing pin as an output:
   pinMode(relayPin, OUTPUT); // initialize the relay control pin as an output
   pinMode(buttonPin, INPUT); // initialize the pushbutton pin as an input
-
-  Serial.begin(9600);
 }
 
 void loop() {
-  // read the state of the pushbutton value:
+  // Read the state of the pushbutton value
   int reading = digitalRead(buttonPin);
   
   // If the switch changed, due to noise or pressing:
@@ -59,36 +42,51 @@ void loop() {
     // The buttonState has changed, long live the buttonState!
     buttonState = reading;
 
-    // If we're pressed, then trigger relay and start counting
     if (buttonState == HIGH) {
-      Serial.println("Pressed");
+      // If we're pressed, then trigger relay and start counting
       lastDepressTime = millis();
     } else {
-      int duration = millis() - lastDepressTime;
+      // If we're released, then delay and trigger relay
+      int remainingDuration = millis() - lastDepressTime;
       
       // If button was held down...
-      if (lastDepressTime != 0 && duration > debounceDelay) { 
-        // Turn on internal LED and wait 3x as long as the button was pressed
-        digitalWrite(internalLedPin, HIGH);
-        delay(duration * 3);
-        digitalWrite(internalLedPin, LOW);
+      if (lastDepressTime != 0 && remainingDuration  > pressHoldThreshold) {
+        // Wait 3x as long a button was pushed
+        remainingDuration = remainingDuration * 3;
+
+        // Flash light faster and faster...
+        while (remainingDuration > 0) {
+          // Flash LED for 1/10th of remaining delay
+          digitalWrite(internalLedPin, HIGH);
+          delay(remainingDuration * 0.1);
+          digitalWrite(internalLedPin, LOW);
+          delay(remainingDuration * 0.1);
+
+          // reducing the remaining delay
+          remainingDuration = remainingDuration - (remainingDuration * 0.1) - 10;
+        }
       }
-      Serial.println("Triggering Relay.");
-      triggerRelay();
-      lastDepressTime = 0;
+
+      if (millis() - lastDepressTime > debounceThreshold) {
+        triggerRelay();
+        lastDepressTime = 0;
+      }
     }
   }
 }
 
 void triggerRelay(){
+  // Write HIGH level to the debug pin, and don't turn off
+  digitalWrite(debugLedPin, HIGH);
+
   // Write HIGH level to the relay pin, 
   // turning the relay to the NO position,
   // where circuit is intact between NO and COM.
-  digitalWrite(relayPin,HIGH);
+  digitalWrite(relayPin, HIGH);
   digitalWrite(internalLedPin, HIGH);
   
-  // Waitabit
-  delay(500);
+  // Waitabit, long enough to trigger opener
+  delay(relayOnDuration);
 
   // Write LOW to the relay pin, turning the relay to the NC position, 
   // so the circuit is intact between NC and COM.   
